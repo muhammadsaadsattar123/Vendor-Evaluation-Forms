@@ -11,7 +11,7 @@ st.set_page_config(
 )
 
 st.title("📋 Supplier Evaluation Form Auto-Processor")
-st.write("Upload the Master Destination Sheet and Supplier Evaluation Forms. The system will automatically parse and append all form data into the master sheet.")
+st.write("Upload the Sample Data Sheet and Supplier Evaluation Forms. The system will automatically parse and append all form data into the output sheet.")
 
 st.divider()
 
@@ -19,8 +19,8 @@ st.divider()
 col1, col2 = st.columns(2)
 
 with col1:
-    st.subheader("1️⃣ Master Destination Sheet")
-    master_file = st.file_uploader("Upload Master Excel Sheet", type=["xlsx"], key="master")
+    st.subheader("1️⃣ Sample Data Sheet")
+    master_file = st.file_uploader("Upload Sample Data Sheet", type=["xlsx"], key="master")
 
 with col2:
     st.subheader("2️⃣ Supplier Evaluation Forms")
@@ -44,9 +44,9 @@ def parse_rating_smart(row_vals):
             return "3-Always on time"
     return ""
 
-if st.button("🚀 Merge & Update Master Sheet", use_container_width=True, type="primary"):
+if st.button("🚀 Merge & Update Sheet", use_container_width=True, type="primary"):
     if not master_file or not supplier_files:
-        st.error("Please upload BOTH Master Destination Sheet and at least ONE Supplier Evaluation Form.")
+        st.error("Please upload BOTH Sample Data Sheet and at least ONE Supplier Evaluation Form.")
     else:
         try:
             # Load Master Workbook
@@ -57,8 +57,7 @@ if st.button("🚀 Merge & Update Master Sheet", use_container_width=True, type=
             EDITOR_NAME = "Muhammad Saad"
             EDITOR_EMAIL = "muhammad.saad1@tcf.org.pk"
 
-            # Date Format Matching Row 2 (sample data row)
-            # Row 2, Column B (Start Time) string format: 'M/D/YYYY HH:MM'
+            # Date Format Matching Row 2
             now = datetime.now()
             date_time_str = now.strftime("%m/%d/%Y %H:%M")
 
@@ -93,7 +92,6 @@ if st.button("🚀 Merge & Update Master Sheet", use_container_width=True, type=
                     eval_date = eval_date.strftime("%m/%d/%Y")
 
                 # Mapping Data into Row Dictionary
-                # Col 1: ID, Col 2: Start time, Col 3: Completion time, Col 4: Email, Col 5: Name
                 row_data = {
                     1: new_id,
                     2: date_time_str,
@@ -110,13 +108,13 @@ if st.button("🚀 Merge & Update Master Sheet", use_container_width=True, type=
                     13: period_eval,
                 }
 
-                # Write values to master sheet and copy cell formatting from Row 2
+                # Write values to sheet and copy cell formatting from Row 2
                 sample_row = 2 if ws_master.max_row >= 2 else 1
 
                 for col_idx, val in row_data.items():
                     target_cell = ws_master.cell(row=next_row, column=col_idx, value=val)
                     
-                    # Align cell style & font with the destination sample row
+                    # Align cell style & font with the sample row
                     ref_cell = ws_master.cell(row=sample_row, column=col_idx)
                     if ref_cell.has_style:
                         target_cell.font = copy.copy(ref_cell.font)
@@ -136,9 +134,9 @@ if st.button("🚀 Merge & Update Master Sheet", use_container_width=True, type=
 
             st.success(f"✅ Successfully processed {processed_count} form(s)!")
             st.download_button(
-                label="📥 Download Updated Master Sheet",
+                label="📥 Download Updated Sheet",
                 data=output_buffer,
-                file_name="Updated_Master_Destination_Sheet.xlsx",
+                file_name="Updated_Sample_Data_Sheet.xlsx",
                 mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
                 type="primary"
             )
