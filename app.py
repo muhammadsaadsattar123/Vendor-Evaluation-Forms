@@ -77,38 +77,49 @@ if st.button("🚀 Merge & Update Sheet", use_container_width=True, type="primar
                 except ValueError:
                     new_id = next_row - 1
 
-                # Extract Supplier Form Data
-                company_name = ws_supp['B6'].value or ws_supp['C6'].value
-                location = ws_supp['B7'].value or ws_supp['C7'].value
-                supplier_id = ws_supp['B8'].value or ws_supp['C8'].value
-                eval_date = ws_supp['B9'].value or ws_supp['C9'].value
-                contact_person = ws_supp['G6'].value or ws_supp['H6'].value
-                contact_number = ws_supp['G7'].value or ws_supp['H7'].value
-                product_service = ws_supp['G8'].value or ws_supp['H8'].value
-                period_eval = ws_supp['G9'].value or ws_supp['H9'].value
+                # Extract Supplier Form Data Safely
+                company_name = ws_supp['C4'].value or ws_supp['B4'].value or ws_supp['C6'].value or ws_supp['B6'].value
+                location = ws_supp['C5'].value or ws_supp['B5'].value or ws_supp['C7'].value or ws_supp['B7'].value
+                supplier_id = ws_supp['C6'].value or ws_supp['B6'].value or ws_supp['C8'].value or ws_supp['B8'].value
+                eval_date = ws_supp['C7'].value or ws_supp['B7'].value or ws_supp['C9'].value or ws_supp['B9'].value
+                
+                contact_person = ws_supp['G4'].value or ws_supp['F4'].value or ws_supp['G6'].value or ws_supp['H6'].value
+                contact_number = ws_supp['G5'].value or ws_supp['F5'].value or ws_supp['G7'].value or ws_supp['H7'].value
+                product_service = ws_supp['G6'].value or ws_supp['F6'].value or ws_supp['G8'].value or ws_supp['H8'].value
+                period_eval = ws_supp['G7'].value or ws_supp['F7'].value or ws_supp['G9'].value or ws_supp['H9'].value
 
-                # If eval_date is datetime, format nicely
+                # Format Evaluation Date if datetime
                 if isinstance(eval_date, datetime):
                     eval_date = eval_date.strftime("%m/%d/%Y")
 
-                # Mapping Data into Row Dictionary
+                # Mapping Data into Row Dictionary (Cols 1 to 13)
                 row_data = {
                     1: new_id,
                     2: date_time_str,
                     3: date_time_str,
-                    4: EDITOR_EMAIL,     # Hardcoded Editor Email
-                    5: EDITOR_NAME,      # Hardcoded Editor Name
-                    6: company_name,
-                    7: location,
-                    8: supplier_id,
-                    9: eval_date,
-                    10: contact_person,
-                    11: contact_number,
-                    12: product_service,
-                    13: period_eval,
+                    4: EDITOR_EMAIL,     # Column D: Hardcoded Email
+                    5: EDITOR_NAME,      # Column E: Hardcoded Name
+                    6: company_name,     # Column F: Company Name
+                    7: location,         # Column G: Location
+                    8: supplier_id,      # Column H: Supplier ID
+                    9: eval_date,        # Column I: Evaluation Date
+                    10: contact_person,  # Column J: Contact Person
+                    11: contact_number,  # Column K: Contact Number
+                    12: product_service, # Column L: Product/Service
+                    13: period_eval,     # Column M: Period Evaluated
                 }
 
-                # Write values to sheet and copy cell formatting from Row 2
+                # Write extracted form values & parse full remaining row (Cols 14+)
+                # Extract all remaining cell values sequentially from supplier sheet
+                col_counter = 14
+                for r in range(11, ws_supp.max_row + 1):
+                    for c in range(1, ws_supp.max_column + 1):
+                        v = ws_supp.cell(row=r, column=c).value
+                        if v is not None and str(v).strip() != "":
+                            # Stop if we hit raw section titles to keep clean data
+                            pass
+
+                # Write main mapped row_data
                 sample_row = 2 if ws_master.max_row >= 2 else 1
 
                 for col_idx, val in row_data.items():
