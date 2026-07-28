@@ -28,6 +28,27 @@ with col2:
 
 st.divider()
 
+def get_field_value(ws, label_keywords):
+    """
+    Scans top rows of form for a specific label keyword and returns the value to its right.
+    """
+    for r in range(1, 15):
+        for c in range(1, 12):
+            cell_val = ws.cell(row=r, column=c).value
+            if cell_val is not None:
+                val_str = str(cell_val).strip().lower()
+                for kw in label_keywords:
+                    if kw in val_str:
+                        # Scan next columns to the right for the actual value
+                        for right_offset in range(1, 5):
+                            val_right = ws.cell(row=r, column=c + right_offset).value
+                            if val_right is not None and str(val_right).strip() != "" and str(val_right).strip().lower() != val_str:
+                                # Clean potential label repetition
+                                clean_val = str(val_right).strip()
+                                if not any(k in clean_val.lower() for k in [':', 'company', 'supplier', 'location', 'contact']):
+                                    return val_right
+    return ""
+
 if st.button("🚀 Merge & Update Sheet", use_container_width=True, type="primary"):
     if not master_file or not supplier_files:
         st.error("Please upload BOTH Sample Data Sheet and at least ONE Supplier Evaluation Form.")
@@ -61,22 +82,22 @@ if st.button("🚀 Merge & Update Sheet", use_container_width=True, type="primar
                 except (ValueError, TypeError):
                     new_id = next_row - 1
 
-                # Exact Cell Extraction from Vendor Evaluation Form
-                company_name = ws_supp['C4'].value or ws_supp['B4'].value or ws_supp['D4'].value or ""
-                location = ws_supp['C5'].value or ws_supp['B5'].value or ws_supp['D5'].value or ""
-                supplier_id = ws_supp['C6'].value or ws_supp['B6'].value or ws_supp['D6'].value or ""
-                eval_date = ws_supp['C7'].value or ws_supp['B7'].value or ws_supp['D7'].value or ""
+                # Dynamic Search for Header Values
+                company_name = get_field_value(ws_supp, ['company name', 'company:'])
+                location = get_field_value(ws_supp, ['location', 'address'])
+                supplier_id = get_field_value(ws_supp, ['supplier id', 'supplier:'])
+                eval_date = get_field_value(ws_supp, ['evaluation date', 'date:'])
                 
-                contact_person = ws_supp['G4'].value or ws_supp['H4'].value or ws_supp['F4'].value or ""
-                contact_number = ws_supp['G5'].value or ws_supp['H5'].value or ws_supp['F5'].value or ""
-                product_service = ws_supp['G6'].value or ws_supp['H6'].value or ws_supp['F6'].value or ""
-                period_eval = ws_supp['G7'].value or ws_supp['H7'].value or ws_supp['F7'].value or ""
+                contact_person = get_field_value(ws_supp, ['contact person'])
+                contact_number = get_field_value(ws_supp, ['contact number', 'contact no'])
+                product_service = get_field_value(ws_supp, ['product/service', 'product', 'service'])
+                period_eval = get_field_value(ws_supp, ['period evaluated', 'period'])
 
                 # Format Evaluation Date
                 if isinstance(eval_date, datetime):
                     eval_date = eval_date.strftime("%m/%d/%Y")
 
-                # Map to Master Sheet Columns
+                # Exact Row Mapping
                 row_data = {
                     1: new_id,
                     2: date_time_str,    # Start time
