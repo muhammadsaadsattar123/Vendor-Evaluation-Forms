@@ -12,7 +12,7 @@ st.set_page_config(
 )
 
 st.title("📋 Supplier Evaluation Form Auto-Processor")
-st.write("Upload the Master Destination Sheet and Supplier Evaluation Forms. The system will automatically parse and append all form data into the master sheet.")
+st.write("Upload the Sample Data Sheet and Supplier Evaluation Forms. The system will automatically parse and append all form data into the sample data sheet.")
 
 st.divider()
 
@@ -20,8 +20,8 @@ st.divider()
 col1, col2 = st.columns(2)
 
 with col1:
-    st.subheader("1️⃣ Master Destination Sheet")
-    master_file = st.file_uploader("Upload Master Excel Sheet", type=["xlsx"], key="master")
+    st.subheader("1️⃣ Sample Data Sheet")
+    master_file = st.file_uploader("Upload Sample Data Sheet", type=["xlsx"], key="master")
 
 with col2:
     st.subheader("2️⃣ Supplier Evaluation Forms")
@@ -40,24 +40,6 @@ def parse_form_data(ws_form, next_id):
             v = get_val(r, c)
             if v:
                 return v
-        return ""
-
-    def extract_header_by_label(keywords):
-        """
-        Dynamically searches rows 1 to 20 for label keywords
-        and returns the first non-empty value found to its right.
-        """
-        for r in range(1, 20):
-            for c in range(1, 15):
-                val = get_val(r, c)
-                if val:
-                    val_lower = val.lower()
-                    if any(kw in val_lower for kw in keywords):
-                        # Check up to 5 cells to the right for the actual field value
-                        for offset in range(1, 6):
-                            target_val = get_val(r, c + offset)
-                            if target_val and not any(kw in target_val.lower() for kw in ['company', 'supplier', 'location', 'address', 'evaluation', 'contact']):
-                                return target_val
         return ""
 
     def parse_rating_smart(row, col_pairs, default_keywords=None):
@@ -99,19 +81,17 @@ def parse_form_data(ws_form, next_id):
 
         return ""
 
-    # Dynamic extraction of top form headers
-    vendor_name = extract_header_by_label(['company name', 'company']) or get_first_non_empty(6, [6, 5, 7, 8, 9, 10, 14])
-    location_val = extract_header_by_label(['location', 'address']) or get_first_non_empty(8, [6, 5, 7, 8, 9, 10, 14])
-    supplier_id_val = extract_header_by_label(['supplier id', 'supplier']) or get_first_non_empty(10, [6, 5, 7, 8, 9, 10, 14])
-    
-    raw_date = extract_header_by_label(['evaluation date', 'date']) or get_first_non_empty(12, [6, 5, 7, 8, 14])
+    # Smart fallback for Evaluation Date
+    raw_date = get_first_non_empty(12, [6, 5, 7, 8, 14])
     eval_date = raw_date.split(' ')[0] if raw_date else datetime.now().strftime('%Y-%m-%d')
     now_str = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
 
-    contact_person = extract_header_by_label(['contact person']) or get_first_non_empty(6, [14, 13, 15, 6, 8]) or vendor_name
-    contact_number = extract_header_by_label(['contact number', 'contact no']) or get_first_non_empty(8, [14, 13, 15, 6, 8])
-    product_service = extract_header_by_label(['product/service', 'product', 'service']) or get_first_non_empty(10, [14, 13, 15, 6, 8])
-    period_eval = extract_header_by_label(['period evaluated', 'period']) or get_first_non_empty(12, [14, 13, 15, 6, 8])
+    # Common search column ranges to prevent missing data if vendor shifted cells
+    col_search_main = [6, 5, 7, 8, 9, 10, 14]
+    col_search_contact = [14, 13, 15, 6, 8]
+
+    vendor_name = get_first_non_empty(6, col_search_main)
+    contact_person = get_first_non_empty(6, col_search_contact) or vendor_name
 
     # Universal column pair checks
     rating_cols = [(13, 14), (10, 11), (11, 12), (12, 13), (15, 16), (17, 18), (19, 20)]
@@ -120,16 +100,16 @@ def parse_form_data(ws_form, next_id):
         'Id': next_id,
         'Start time': now_str,
         'Completion time': now_str,
-        'Email': f"muhammad.saad1@tcf.org.pk",
+        'Email': "muhammad.saad1@tcf.org.pk",
         'Name': "Muhammad Saad",
         'Company Name:': vendor_name,
-        'Location / Address:': location_val,
-        'Supplier ID:': supplier_id_val,
+        'Location / Address:': get_first_non_empty(8, col_search_main),
+        'Supplier ID:': get_first_non_empty(10, col_search_main),
         'Evaluation Date:': eval_date,
         'Contact Person': contact_person,
-        'Contact Number:': contact_number,
-        'Product/Service Provided:': product_service,
-        'Period Evaluated:1': period_eval,
+        'Contact Number:': get_first_non_empty(8, col_search_contact),
+        'Product/Service Provided:': get_first_non_empty(10, col_search_contact),
+        'Period Evaluated:1': get_first_non_empty(12, col_search_contact),
         'Evaluation Cycle:': 'Annually',
         'In Business for:': 'More than 5 Years',
         'Registered vendor at TCF for:': 'More than 5 Years',
@@ -210,9 +190,9 @@ def parse_form_data(ws_form, next_id):
     }
 
 # Process Action
-if st.button("🚀 Merge & Update Master Sheet", type="primary", use_container_width=True):
+if st.button("🚀 Merge & Update Sample Data Sheet", type="primary", use_container_width=True):
     if not master_file:
-        st.error("⚠️ Please upload the Master Destination Sheet first!")
+        st.error("⚠️ Please upload the Sample Data Sheet first!")
     elif not forms_files:
         st.error("⚠️ Please upload at least one Supplier Evaluation Form!")
     else:
@@ -241,12 +221,12 @@ if st.button("🚀 Merge & Update Master Sheet", type="primary", use_container_w
             dest_wb.save(output_stream)
             output_stream.seek(0)
 
-            st.success(f"🎉 Success! {count} supplier form(s) merged into the master sheet successfully.")
+            st.success(f"🎉 Success! {count} supplier form(s) merged into the sample data sheet successfully.")
 
             st.download_button(
-                label="📥 Download Updated Master Sheet",
+                label="📥 Download Updated Sample Data Sheet",
                 data=output_stream,
-                file_name="Master_Destination_Sheet_Updated.xlsx",
+                file_name="Sample_Data_Sheet_Updated.xlsx",
                 mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
                 type="primary"
             )
