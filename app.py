@@ -81,10 +81,25 @@ def parse_form_data(ws_form, next_id):
 
         return ""
 
-    # Smart fallback for Evaluation Date
+    # --- DATE & TIME FORMATTING (Matching Sample Data Standards) ---
+    now = datetime.now()
+    
+    # Forms timestamp format (e.g., 'M/D/YYYY H:MM:SS AM/PM' or 'YYYY-MM-DD HH:MM:SS')
+    now_str = now.strftime('%m/%d/%Y %I:%M:%S %p')
+
     raw_date = get_first_non_empty(12, [6, 5, 7, 8, 14])
-    eval_date = raw_date.split(' ')[0] if raw_date else datetime.now().strftime('%Y-%m-%d')
-    now_str = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+    
+    # Handle Date parsing and standardize format to M/D/YYYY
+    if raw_date:
+        clean_date_str = raw_date.split(' ')[0]
+        try:
+            # Parse datetime object if in standard string formats
+            parsed_date = pd.to_datetime(clean_date_str).strftime('%m/%d/%Y')
+            eval_date = parsed_date
+        except Exception:
+            eval_date = clean_date_str
+    else:
+        eval_date = now.strftime('%m/%d/%Y')
 
     # Common search column ranges to prevent missing data if vendor shifted cells
     col_search_main = [6, 5, 7, 8, 9, 10, 14]
