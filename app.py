@@ -3,6 +3,7 @@ import openpyxl
 import pandas as pd
 import io
 from datetime import datetime
+from copy import copy
 
 # Page Configuration
 st.set_page_config(
@@ -81,25 +82,21 @@ def parse_form_data(ws_form, next_id):
 
         return ""
 
-    # --- DATE & TIME FORMATTING (Matching Sample Data Standards) ---
+    # --- DATE & TIME FORMATTING (Matching Sample Data Standard: M/D/YYYY e.g., 5/27/2025) ---
     now = datetime.now()
-    
-    # Forms timestamp format (e.g., 'M/D/YYYY H:MM:SS AM/PM' or 'YYYY-MM-DD HH:MM:SS')
-    now_str = now.strftime('%m/%d/%Y %I:%M:%S %p')
+    now_str = f"{now.month}/{now.day}/{now.year} {now.strftime('%I:%M:%S %p')}"
 
     raw_date = get_first_non_empty(12, [6, 5, 7, 8, 14])
     
-    # Handle Date parsing and standardize format to M/D/YYYY
     if raw_date:
         clean_date_str = raw_date.split(' ')[0]
         try:
-            # Parse datetime object if in standard string formats
-            parsed_date = pd.to_datetime(clean_date_str).strftime('%m/%d/%Y')
-            eval_date = parsed_date
+            dt = pd.to_datetime(clean_date_str)
+            eval_date = f"{dt.month}/{dt.day}/{dt.year}"
         except Exception:
             eval_date = clean_date_str
     else:
-        eval_date = now.strftime('%m/%d/%Y')
+        eval_date = f"{now.month}/{now.day}/{now.year}"
 
     # Common search column ranges to prevent missing data if vendor shifted cells
     col_search_main = [6, 5, 7, 8, 9, 10, 14]
@@ -220,7 +217,7 @@ if st.button("🚀 Merge & Update Sample Data Sheet", type="primary", use_contai
             for form_file in forms_files:
                 form_wb = openpyxl.load_workbook(io.BytesIO(form_file.getvalue()), data_only=True)
                 
-                # Check for LightupEnterprises sheet first, otherwise fall back to the active worksheet
+                # Check for LightupEnterprises sheet first, otherwise fall back to active worksheet
                 if 'LightupEnterprises' in form_wb.sheetnames:
                     ws_form = form_wb['LightupEnterprises']
                 else:
@@ -230,6 +227,20 @@ if st.button("🚀 Merge & Update Sample Data Sheet", type="primary", use_contai
                 row_dict = parse_form_data(ws_form, next_id)
                 new_row = [row_dict.get(h, "") for h in headers]
                 dest_ws.append(new_row)
+                
+                # --- COPY FORMATTING & ALIGNMENT FROM SAMPLE ROW 2 ---
+                new_row_idx = dest_ws.max_row
+                for col_idx in range(1, dest_ws.max_column + 1):
+                    sample_cell = dest_ws.cell(row=2, column=col_idx)
+                    target_cell = dest_ws.cell(row=new_row_idx, column=col_idx)
+                    
+                    if sample_cell.has_style:
+                        target_cell.font = copy(sample_cell.font)
+                        target_cell.border = copy(sample_cell.border)
+                        target_cell.number_format = sample_cell.number_format
+                        target_cell.protection = copy(sample_cell.protection)
+                        target_cell.alignment = copy(sample_cell.alignment)
+
                 count += 1
 
             output_stream = io.BytesIO()
